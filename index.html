@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    <title>Website Đặt Vé Xe Khách</title>
+</head>
+<body>
+
+    <h1>HỆ THỐNG ĐẶT VÉ XE KHÁCH</h1>
+    <hr>
+
+    <h2>Trang chủ</h2>
+    <p>Chào mừng đến với website đặt vé xe của nhóm.</p>
+    <p>Đồ án môn học - Demo CI/CD GitHub Actions.</p>
+
+    <hr>
+
+    <h2>Tìm kiếm chuyến xe</h2>
+
+    <form>
+        <label>Điểm đi:</label>
+        <select name="diemDi">
+            <option>TP. Hồ Chí Minh</option>
+            <option>An Giang</option>
+            <option>Cần Thơ</option>
+            <option>Đà Lạt</option>
+        </select>
+
+        <br><br>
+
+        <label>Điểm đến:</label>
+        <select name="diemDen">
+            <option>An Giang</option>
+            <option>TP. Hồ Chí Minh</option>
+            <option>Cần Thơ</option>
+            <option>Đà Lạt</option>
+        </select>
+
+        <br><br>
+
+        <label>Ngày đi:</label>
+        <input type="date" name="ngayDi">
+
+        <br><br>
+
+        <button type="button">Tìm chuyến xe</button>
+    </form>
+
+    <hr>
+
+    <h2>Danh sách chuyến xe</h2>
+
+    <table border="1" cellpadding="10">
+        <tr>
+            <th>Mã chuyến</th>
+            <th>Điểm đi</th>
+            <th>Điểm đến</th>
+            <th>Giờ khởi hành</th>
+            <th>Giá vé</th>
+        </tr>
+
+        <tr>
+            <td>CX001</td>
+            <td>TP. Hồ Chí Minh</td>
+            <td>An Giang</td>
+            <td>07:00</td>
+            <td>180.000 VNĐ</td>
+        </tr>
+
+        <tr>
+            <td>CX002</td>
+            <td>TP. Hồ Chí Minh</td>
+            <td>Đà Lạt</td>
+            <td>08:30</td>
+            <td>300.000 VNĐ</td>
+        </tr>
+
+        <tr>
+            <td>CX003</td>
+            <td>Cần Thơ</td>
+            <td>TP. Hồ Chí Minh</td>
+            <td>09:00</td>
+            <td>150.000 VNĐ</td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h2>Giới thiệu đồ án</h2>
+    <p>
+        Website đặt vé xe khách trực tuyến
+        được xây dựng phục vụ đồ án nhóm.
+    </p>
+
+    <p>
+        Mục tiêu: Triển khai website tự động
+        từ GitHub lên Somee Hosting
+        bằng GitHub Actions.
+    </p>
+
+    <hr>
+
+    <footer>
+        <p>Đồ án nhóm - Hệ thống đặt vé xe khách</p>
+        <p>CI/CD - GitHub Actions - Somee Hosting</p>
+    </footer>
+
+</body>
+</html>
