@@ -1,0 +1,16 @@
+meta {
+  name: Xac nhan thanh toan sandbox (DEV ONLY)
+  type: http
+  seq: 8
+}
+post {
+  url: {{baseUrl}}/api/payments/{{maThanhToan}}/sandbox-confirm
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}
+tests {
+  test("Booking da thanh toan", function() { expect(res.getStatus()).to.equal(200); });
+}

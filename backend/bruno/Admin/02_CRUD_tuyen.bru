@@ -1,0 +1,13 @@
+meta {
+  name: Xem CRUD routes - can JWT admin
+  type: http
+  seq: 13
+}
+get {
+  url: {{baseUrl}}/api/admin/crud/routes
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}

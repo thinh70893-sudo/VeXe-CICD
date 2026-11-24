@@ -1,0 +1,15 @@
+meta {
+  name: Xem ghe trong va chon mot ghe
+  type: http
+  seq: 4
+}
+get {
+  url: {{baseUrl}}/api/trips/{{maChuyen}}/seats
+  body: none
+  auth: none
+}
+script:post-response {
+  const dsGhe = res.getBody();
+  const gheTrong = dsGhe.find(ghe => ghe.trangThai === "AVAILABLE");
+  if (gheTrong) bru.setVar("maGhe", gheTrong.maGhe);
+}

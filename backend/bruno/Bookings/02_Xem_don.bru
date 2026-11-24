@@ -1,0 +1,17 @@
+meta {
+  name: Xem chi tiet don va ma ve
+  type: http
+  seq: 9
+}
+get {
+  url: {{baseUrl}}/api/bookings/{{maDatVe}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}
+script:post-response {
+  const duLieu = res.getBody();
+  if (duLieu.hanhKhach && duLieu.hanhKhach.length) bru.setVar("maVe", duLieu.hanhKhach[0].maVe);
+}

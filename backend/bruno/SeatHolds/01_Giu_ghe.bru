@@ -1,0 +1,28 @@
+meta {
+  name: Redis giu ghe 300 giay
+  type: http
+  seq: 5
+}
+post {
+  url: {{baseUrl}}/api/seat-holds
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "maChuyen": {{maChuyen}},
+    "danhSachMaGhe": [{{maGhe}}]
+  }
+}
+script:post-response {
+  if (res.getStatus() === 201) bru.setVar("maGiuGhe", res.getBody().maGiuGhe);
+}
+tests {
+  test("Giu ghe thanh cong", function() { expect(res.getStatus()).to.equal(201); });
+}

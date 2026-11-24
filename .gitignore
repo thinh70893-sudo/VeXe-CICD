@@ -1,0 +1,50 @@
+﻿# FRONTEND
+**/node_modules/
+**/dist/
+**/.vite/
+**/.env
+**/.env.*
+!**/.env.example
+
+# BACKEND
+**/bin/
+**/obj/
+**/.vs/
+**/TestResults/
+**/*.user
+**/*.suo
+
+# SECRETS
+**/appsettings*.json
+!**/appsettings*.example.json
+**/secrets.json
+**/publish/
+
+# SQL DATA / BACKUPS
+*.bak
+*.bacpac
+*.mdf
+*.ldf
+*.sql
+*.sql.txt
+*.sql.gz
+
+# TEMPORARY FILES
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+/KiemTra_SQL.txt
+
+/backend/bruno/environments/Local.bru
+
+/backend/compose.yaml
+
+/backend/database/README_Original.md
+
+/backend/docs/API_ENDPOINTS.md
+
+/backend/README.md

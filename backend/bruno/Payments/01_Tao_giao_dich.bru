@@ -1,0 +1,22 @@
+meta {
+  name: Tao giao dich sandbox
+  type: http
+  seq: 7
+}
+post {
+  url: {{baseUrl}}/api/payments
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "maDatVe": {{maDatVe}} }
+}
+script:post-response {
+  if (res.getStatus() === 200) bru.setVar("maThanhToan", res.getBody().maThanhToan);
+}

@@ -1,0 +1,13 @@
+meta {
+  name: Anh QR PNG cua ve
+  type: http
+  seq: 10
+}
+get {
+  url: {{baseUrl}}/api/tickets/{{maVe}}/qr
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}

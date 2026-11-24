@@ -1,0 +1,13 @@
+meta {
+  name: Danh sach thanh pho
+  type: http
+  seq: 2
+}
+get {
+  url: {{baseUrl}}/api/catalog/cities
+  body: none
+  auth: none
+}
+tests {
+  test("Tra ve 200", function() { expect(res.getStatus()).to.equal(200); });
+}

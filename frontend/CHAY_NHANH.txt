@@ -1,0 +1,9 @@
+BUSGO FRONTEND - CHAY NHANH TREN WINDOWS
+1) Chay Backend: cd BusTicket_Backend_Full/src/BusTicket.Api && dotnet run --launch-profile http
+2) Kiem tra http://localhost:5080/health
+3) Mo PowerShell tai thu muc frontend: npm install
+4) Chay: npm run dev
+5) Mo http://localhost:5173
+6) Dang nhap khach: khach1@example.test / Demo@123456 (sau khi da nap database seed)
+7) Neu da thanh toan sandbox, xem email ve QR tai http://localhost:8025
+Huong dan chi tiet xem README.md.

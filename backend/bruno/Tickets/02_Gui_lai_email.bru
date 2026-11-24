@@ -1,0 +1,13 @@
+meta {
+  name: Gui lai email ve neu can
+  type: http
+  seq: 11
+}
+post {
+  url: {{baseUrl}}/api/tickets/{{maVe}}/resend-email
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}

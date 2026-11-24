@@ -1,0 +1,14 @@
+meta {
+  name: Tim chuyen xe
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/trips?soDong=100
+  body: none
+  auth: none
+}
+script:post-response {
+  const dsChuyen = res.getBody();
+  if (dsChuyen && dsChuyen.length > 0) bru.setVar("maChuyen", dsChuyen[0].maChuyen);
+}

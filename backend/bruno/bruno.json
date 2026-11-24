@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "BusTicket API - Do an lap trinh web",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

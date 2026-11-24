@@ -1,0 +1,31 @@
+meta {
+  name: Tao booking Pending
+  type: http
+  seq: 6
+}
+post {
+  url: {{baseUrl}}/api/bookings
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{accessToken}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "maGiuGhe": "{{maGiuGhe}}",
+    "tenLienHe": "Nguyen Minh Anh",
+    "emailLienHe": "khach1@example.test",
+    "soDienThoaiLienHe": "0900000003",
+    "hanhKhach": [
+      { "hoTen": "Nguyen Minh Anh", "soDienThoai": "0900000003", "maGhe": {{maGhe}} }
+    ],
+    "maKhuyenMai": null
+  }
+}
+script:post-response {
+  if (res.getStatus() === 201) bru.setVar("maDatVe", res.getBody().maDatVe);
+}
