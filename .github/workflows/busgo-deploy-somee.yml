@@ -94,3 +94,170 @@ jobs:
           python3 - <<'PY'
           import os
           import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          required = [
+              "SQLSERVER_CONNECTION_STRING",
+              "REDIS_CONNECTION_STRING",
+              "JWT_KEY",
+              "JWT_ISSUER",
+              "JWT_AUDIENCE",
+              "SMTP_HOST",
+              "SMTP_PORT",
+              "SMTP_USE_SSL",
+              "SMTP_USERNAME",
+              "SMTP_PASSWORD",
+              "SMTP_EMAIL",
+              "SMTP_DISPLAY_NAME",
+          ]
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit(
+                  "Missing GitHub Actions Secrets: " + ", ".join(missing)
+              )
+
+          if len(os.environ["JWT_KEY"].encode("utf-8")) < 32:
+              raise SystemExit("JWT_KEY must contain at least 32 UTF-8 bytes.")
+
+          config_file = Path("publish/web.config")
+          if config_file.is_file():
+              tree = ET.parse(config_file)
+              root = tree.getroot()
+          else:
+              root = ET.Element("configuration")
+              tree = ET.ElementTree(root)
+
+          if root.tag != "configuration":
+              raise SystemExit(
+                  "Invalid publish/web.config: root element must be <configuration>."
+              )
+
+          # Find or create the IIS system.webServer section.
+          system_web_server = root.find(".//system.webServer")
+          if system_web_server is None:
+              location = root.find("./location")
+              if location is None:
+                  location = ET.SubElement(
+                      root,
+                      "location",
+                      {
+                          "path": ".",
+                          "inheritInChildApplications": "false",
+                      },
+                  )
+              system_web_server = ET.SubElement(location, "system.webServer")
+
+          # Ensure IIS routes requests through ASP.NET Core Module V2.
+          handlers = system_web_server.find("handlers")
+          if handlers is None:
+              handlers = ET.SubElement(system_web_server, "handlers")
+
+          handler = next(
+              (
+                  item for item in handlers.findall("add")
+                  if item.get("name") == "aspNetCore"
+              ),
+              None,
+          )
+          if handler is None:
+              ET.SubElement(
+                  handlers,
+                  "add",
+                  {
+                      "name": "aspNetCore",
+                      "path": "*",
+                      "verb": "*",
+                      "modules": "AspNetCoreModuleV2",
+                      "resourceType": "Unspecified",
+                  },
+              )
+
+          # Create the ASP.NET Core launch configuration if publish did not
+          # generate it. The project entry assembly is BusTicket.Api.dll.
+          aspnet = system_web_server.find("aspNetCore")
+          if aspnet is None:
+              aspnet = ET.SubElement(
+                  system_web_server,
+                  "aspNetCore",
+                  {
+                      "processPath": "dotnet",
+                      "arguments": r".\BusTicket.Api.dll",
+                      "stdoutLogEnabled": "false",
+                      "stdoutLogFile": r".\logs\stdout",
+                      "hostingModel": "inprocess",
+                  },
+              )
+          else:
+              aspnet.set("processPath", aspnet.get("processPath") or "dotnet")
+              aspnet.set(
+                  "arguments",
+                  aspnet.get("arguments") or r".\BusTicket.Api.dll",
+              )
+              aspnet.set(
+                  "stdoutLogEnabled",
+                  aspnet.get("stdoutLogEnabled") or "false",
+              )
+              aspnet.set(
+                  "stdoutLogFile",
+                  aspnet.get("stdoutLogFile") or r".\logs\stdout",
+              )
+              aspnet.set(
+                  "hostingModel",
+                  aspnet.get("hostingModel") or "inprocess",
+              )
+
+          app_dll = Path("publish/BusTicket.Api.dll")
+          if not app_dll.is_file():
+              raise SystemExit(
+                  "Published entry assembly publish/BusTicket.Api.dll was not found. "
+                  "Check the BusTicket.Api.csproj AssemblyName before deploying."
+              )
+
+          envs = aspnet.find("environmentVariables")
+          if envs is None:
+              envs = ET.SubElement(aspnet, "environmentVariables")
+
+          values = {
+              "ASPNETCORE_ENVIRONMENT": "Production",
+              "ConnectionStrings__SqlServer": os.environ["SQLSERVER_CONNECTION_STRING"],
+              "ConnectionStrings__Redis": os.environ["REDIS_CONNECTION_STRING"],
+              "Jwt__Key": os.environ["JWT_KEY"],
+              "Jwt__Issuer": os.environ["JWT_ISSUER"],
+              "Jwt__Audience": os.environ["JWT_AUDIENCE"],
+              "Smtp__Host": os.environ["SMTP_HOST"],
+              "Smtp__Port": os.environ["SMTP_PORT"],
+              "Smtp__UseSsl": os.environ["SMTP_USE_SSL"],
+              "Smtp__Username": os.environ["SMTP_USERNAME"],
+              "Smtp__Password": os.environ["SMTP_PASSWORD"],
+              "Smtp__EmailGui": os.environ["SMTP_EMAIL"],
+              "Smtp__TenHienThi": os.environ["SMTP_DISPLAY_NAME"],
+          }
+
+          for name, value in values.items():
+              element = next(
+                  (
+                      item for item in envs.findall("environmentVariable")
+                      if item.get("name") == name
+                  ),
+                  None,
+              )
+              if element is None:
+                  element = ET.SubElement(envs, "environmentVariable")
+              element.set("name", name)
+              element.set("value", value)
+
+          tree.write(config_file, encoding="utf-8", xml_declaration=True)
+          print("Production settings added to IIS configuration; values are hidden.")
+          PY
+
+      - name: Deploy published files to Somee by FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./publish/
+          server-dir: ${{ secrets.FTP_DIR }}
+          dangerous-clean-slate: false
