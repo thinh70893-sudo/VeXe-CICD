@@ -70,13 +70,40 @@ xayDung.Services.AddScoped<DichVuQuanTri>();
 xayDung.Services.AddScoped<DichVuViHoanVe>();
 xayDung.Services.AddHostedService<WorkerEmail>();
 xayDung.Services.AddHostedService<WorkerHetHan>();
+
 var ungDung = xayDung.Build();
+
+// Giữ nguyên middleware xử lý ngoại lệ.
 ungDung.UseMiddleware<XuLyNgoaiLeMiddleware>();
-if (ungDung.Environment.IsDevelopment()) ungDung.MapOpenApi();
+
+// OpenAPI chỉ hoạt động trong Development.
+if (ungDung.Environment.IsDevelopment())
+{
+    ungDung.MapOpenApi();
+}
+
+// Phục vụ trang chủ React trong wwwroot.
+ungDung.UseDefaultFiles();
+ungDung.UseStaticFiles();
+
+// Giữ nguyên xác thực, phân quyền và CORS.
 ungDung.UseCors("ReactLocal");
 ungDung.UseAuthentication();
 ungDung.UseAuthorization();
+
+// Giữ nguyên tất cả API hiện tại.
 ungDung.MapControllers();
-ungDung.MapGet("/health", () => Results.Ok(new { trangThai = "OK", thoiGianUtc = DateTime.UtcNow }));
+
+// API kiểm tra Backend.
+ungDung.MapGet("/health", () =>
+    Results.Ok(new
+    {
+        trangThai = "OK",
+        thoiGianUtc = DateTime.UtcNow
+    }));
+
+// Hỗ trợ React Router khi tải lại trang hoặc mở URL trực tiếp.
+ungDung.MapFallbackToFile("index.html");
+
 ungDung.Run();
 
