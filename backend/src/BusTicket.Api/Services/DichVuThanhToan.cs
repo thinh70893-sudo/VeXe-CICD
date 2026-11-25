@@ -6,8 +6,12 @@ using Microsoft.Data.SqlClient;
 
 namespace BusTicket.Api.Services;
 
-public sealed class DichVuThanhToan(KetNoiSql ketNoi, DichVuGiuGhe giuGhe,
-    IWebHostEnvironment moiTruong, ILogger<DichVuThanhToan> nhatKy)
+public sealed class DichVuThanhToan(
+    KetNoiSql ketNoi,
+    DichVuGiuGhe giuGhe,
+    IWebHostEnvironment moiTruong,
+    ILogger<DichVuThanhToan> nhatKy,
+    IConfiguration cauHinh)
 {
     public async Task<object> KhoiTao(long maDatVe, long maNguoiDung)
     {
@@ -48,10 +52,19 @@ public sealed class DichVuThanhToan(KetNoiSql ketNoi, DichVuGiuGhe giuGhe,
     }
 
     // Chỉ phục vụ đồ án tại localhost. TUYỆT ĐỐI không cung cấp xác nhận từ frontend trong production.
-    public async Task<object> XacNhanSandbox(long maThanhToan, long maNguoiDung, bool laNhanVien)
-    {
-        if (!moiTruong.IsDevelopment())
-            throw new NgoaiLeNghiepVu("Tính năng thanh toán giả lập chỉ cho phép ở môi trường Development.", 403);
+var batSandboxProduction =
+    bool.TryParse(
+        cauHinh["Payments:EnableSandboxConfirm"],
+        out var enabled
+    ) && enabled;
+
+if (!moiTruong.IsDevelopment() && !batSandboxProduction)
+{
+    throw new NgoaiLeNghiepVu(
+        "Tính năng thanh toán giả lập hiện chưa được bật.",
+        403
+    );
+}
         await using var sql = ketNoi.TaoKetNoi();
         var thanhToan = await sql.QuerySingleOrDefaultAsync<dynamic>("""
             SELECT p.PaymentId,p.BookingId,p.Status AS PaymentStatus,p.ProviderTransactionId,

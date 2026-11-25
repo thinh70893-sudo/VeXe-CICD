@@ -1,0 +1,96 @@
+name: BusGo - Deploy to Somee
+
+on:
+  workflow_run:
+    workflows:
+      - BusGo - Build React and ASP.NET Core
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: busgo-somee-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish and deploy to Somee
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the exact commit that passed CI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # Build React/Vite for the same commit that passed the existing CI workflow.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Copy React files into ASP.NET Core wwwroot
+        run: |
+          rm -rf backend/src/BusTicket.Api/wwwroot
+          mkdir -p backend/src/BusTicket.Api/wwwroot
+          cp -a frontend/dist/. backend/src/BusTicket.Api/wwwroot/
+
+      # Publish the ASP.NET Core 10 app as framework-dependent.
+      # Somee lists .NET 10 support; framework-dependent output is smaller
+      # and more suitable for the 150 MB free-hosting storage limit.
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore backend
+        run: dotnet restore backend/BusTicketBackend.sln
+
+      - name: Publish ASP.NET Core
+        run: |
+          dotnet publish backend/src/BusTicket.Api/BusTicket.Api.csproj \
+            --configuration Release \
+            --no-restore \
+            --output ./publish \
+            --self-contained false
+
+      # The repository intentionally excludes appsettings*.json.
+      # Supply production settings as IIS environment variables in web.config.
+      - name: Inject production settings into IIS web.config
+        env:
+          SQLSERVER_CONNECTION_STRING: ${{ secrets.SQLSERVER_CONNECTION_STRING }}
+          REDIS_CONNECTION_STRING: ${{ secrets.REDIS_CONNECTION_STRING }}
+          JWT_KEY: ${{ secrets.JWT_KEY }}
+          JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
+          JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USE_SSL: ${{ secrets.SMTP_USE_SSL }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_EMAIL: ${{ secrets.SMTP_EMAIL }}
+          SMTP_DISPLAY_NAME: ${{ secrets.SMTP_DISPLAY_NAME }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
