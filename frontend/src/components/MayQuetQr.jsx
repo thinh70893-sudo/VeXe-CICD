@@ -16,6 +16,7 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
     useEffect(() => {
         let daHuy = false;
         let daQuet = false;
+        let tienTrinhKhoiDong = null;
 
         const mayQuet = new Html5Qrcode(maVungQuet.current, false);
 
@@ -28,7 +29,7 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
                 tenLoi === "PermissionDeniedError" ||
                 thongDiep.includes("permission")
             ) {
-                return "Chrome/Safari chưa được cấp quyền camera cho website. Hãy bật quyền Camera trong cài đặt trình duyệt.";
+                return "Trình duyệt chưa được cấp quyền camera cho website. Hãy bật quyền Camera trong cài đặt trình duyệt.";
             }
 
             if (
@@ -49,10 +50,14 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
                 tenLoi === "OverconstrainedError" ||
                 tenLoi === "ConstraintNotSatisfiedError"
             ) {
-                return "Không chọn được camera sau. Hãy thử tải lại trang hoặc chọn lại quyền camera.";
+                return "Không tìm thấy camera sau phù hợp. Hãy kiểm tra camera của thiết bị.";
             }
 
-            return `Không mở được camera${tenLoi ? ` (${tenLoi})` : ""}. Hãy kiểm tra quyền camera và kết nối HTTPS của website.`;
+            if (thongDiep.includes("https") || thongDiep.includes("secure context")) {
+                return "Camera cần website được mở bằng HTTPS.";
+            }
+
+            return `Không mở được camera${tenLoi ? ` (${tenLoi})` : ""}. Hãy kiểm tra quyền camera của trình duyệt.`;
         }
 
         async function dungCamera() {
@@ -62,31 +67,6 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
                 }
             } catch (loi) {
                 console.warn("Không dừng được camera:", loi);
-            }
-
-            try {
-                mayQuet.clear();
-            } catch (loi) {
-                // Scanner có thể chưa khởi tạo xong.
-            }
-        }
-
-        function xuLyQuetThanhCong(noiDungQr) {
-            if (daHuy || daQuet) return;
-
-            daQuet = true;
-            hamThanhCong.current?.(noiDungQr);
-        }
-
-        function capNhatVideoChoIOS() {
-            const vungQuet = document.getElementById(maVungQuet.current);
-            const video = vungQuet?.querySelector("video");
-
-            if (video) {
-                video.setAttribute("playsinline", "true");
-                video.setAttribute("webkit-playsinline", "true");
-                video.autoplay = true;
-                video.muted = true;
             }
         }
 
@@ -100,7 +80,7 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
 
                 if (!navigator.mediaDevices?.getUserMedia) {
                     throw new Error(
-                        "Trình duyệt hiện tại không hỗ trợ truy cập camera. Hãy mở website bằng Safari hoặc Chrome phiên bản mới."
+                        "Trình duyệt không hỗ trợ truy cập camera. Hãy dùng Chrome hoặc Safari phiên bản mới."
                     );
                 }
 
@@ -119,48 +99,49 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
                     aspectRatio: 1
                 };
 
-                try {
-                    await mayQuet.start(
-                        { facingMode: { ideal: "environment" } },
-                        cauHinh,
-                        xuLyQuetThanhCong,
-                        () => {}
-                    );
-                } catch (loiMoCameraSau) {
-                    if (daHuy) return;
+                /*
+                 * html5-qrcode của dự án yêu cầu facingMode là chuỗi.
+                 * Không dùng { ideal: "environment" } và không gọi start()
+                 * lần thứ hai khi lần khởi động đầu tiên chưa hoàn tất.
+                 */
+                tienTrinhKhoiDong = mayQuet.start(
+                    { facingMode: "environment" },
+                    cauHinh,
+                    (noiDungQr) => {
+                        if (daHuy || daQuet) return;
 
-                    console.warn(
-                        "Không mở được camera bằng facingMode, thử chọn camera theo ID:",
-                        loiMoCameraSau
-                    );
+                        daQuet = true;
+                        hamThanhCong.current?.(noiDungQr);
+                    },
+                    () => {}
+                );
 
-                    const danhSachCamera = await Html5Qrcode.getCameras();
+                await tienTrinhKhoiDong;
 
-                    if (!danhSachCamera || danhSachCamera.length === 0) {
-                        throw loiMoCameraSau;
+                // Nếu component đã unmount, cleanup sẽ dừng camera sau khi start() hoàn tất.
+                if (daHuy) return;
+
+                // Giữ video chạy bên trong trang trên iPhone/iPad.
+                const vungQuet = document.getElementById(maVungQuet.current);
+                const video = vungQuet?.querySelector("video");
+
+                if (video) {
+                    video.setAttribute("playsinline", "true");
+                    video.setAttribute("webkit-playsinline", "true");
+                    video.autoplay = true;
+                    video.muted = true;
+
+                    if (video.paused) {
+                        try {
+                            await video.play();
+                        } catch (loiPhatVideo) {
+                            console.warn(
+                                "Trình duyệt chưa cho phát video camera tự động:",
+                                loiPhatVideo
+                            );
+                        }
                     }
-
-                    const cameraSau = danhSachCamera.find((camera) =>
-                        /back|rear|environment|world|sau/i.test(camera.label || "")
-                    );
-
-                    const cameraDuocChon =
-                        cameraSau || danhSachCamera[danhSachCamera.length - 1];
-
-                    await mayQuet.start(
-                        cameraDuocChon.id,
-                        cauHinh,
-                        xuLyQuetThanhCong,
-                        () => {}
-                    );
                 }
-
-                if (daHuy) {
-                    await dungCamera();
-                    return;
-                }
-
-                capNhatVideoChoIOS();
             } catch (loi) {
                 if (!daHuy) {
                     console.error("Lỗi khởi động camera:", loi);
@@ -173,7 +154,17 @@ export default function MayQuetQr({ khiQuetThanhCong }) {
 
         return () => {
             daHuy = true;
-            void dungCamera();
+
+            /*
+             * Chờ start() hoàn tất rồi mới stop().
+             * Tránh gọi stop/clear trong lúc html5-qrcode đang chuyển trạng thái,
+             * đặc biệt khi React StrictMode chạy lại effect.
+             */
+            if (tienTrinhKhoiDong) {
+                void tienTrinhKhoiDong
+                    .then(() => dungCamera())
+                    .catch(() => {});
+            }
         };
     }, []);
 
