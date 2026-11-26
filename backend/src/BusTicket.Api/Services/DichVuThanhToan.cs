@@ -1,5 +1,8 @@
 
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
 using BusTicket.Api.Data;
 using BusTicket.Api.Infrastructure;
 using Dapper;
@@ -11,13 +14,28 @@ using Microsoft.Extensions.Logging;
 
 namespace BusTicket.Api.Services;
 
-public sealed class DichVuThanhToan(
-    KetNoiSql ketNoi,
-    DichVuGiuGhe giuGhe,
-    IWebHostEnvironment moiTruong,
-    ILogger<DichVuThanhToan> nhatKy,
-    IConfiguration cauHinh)
+public sealed class DichVuThanhToan
 {
+    private readonly KetNoiSql ketNoi;
+    private readonly DichVuGiuGhe giuGhe;
+    private readonly IWebHostEnvironment moiTruong;
+    private readonly ILogger<DichVuThanhToan> nhatKy;
+    private readonly IConfiguration cauHinh;
+
+    public DichVuThanhToan(
+        KetNoiSql ketNoi,
+        DichVuGiuGhe giuGhe,
+        IWebHostEnvironment moiTruong,
+        ILogger<DichVuThanhToan> nhatKy,
+        IConfiguration cauHinh)
+    {
+        this.ketNoi = ketNoi;
+        this.giuGhe = giuGhe;
+        this.moiTruong = moiTruong;
+        this.nhatKy = nhatKy;
+        this.cauHinh = cauHinh;
+    }
+
     // =====================================================
     // 1. KHOI TAO GIAO DICH THANH TOAN
     // =====================================================
@@ -27,7 +45,6 @@ public sealed class DichVuThanhToan(
         long maNguoiDung)
     {
         await using var sql = ketNoi.TaoKetNoi();
-
         await sql.OpenAsync();
 
         await using var giaoDich =
@@ -57,12 +74,10 @@ public sealed class DichVuThanhToan(
                     "Đơn không còn cho phép thanh toán.", 409);
             }
 
-            // Kiểm tra quyền giữ ghế trước khi tạo thanh toán.
             await giuGhe.KiemTra(
                 (Guid)don.HoldId, maNguoiDung);
 
-            // Kiểm tra giao dịch đang chờ của đơn.
-            var daCo = await sql.QuerySingleOrDefaultAsync("""
+            var daCo = await sql.QuerySingleOrDefaultAsync<dynamic>("""
                 SELECT TOP (1)
                     PaymentId AS MaThanhToan,
                     MerchantRequestId AS MaYeuCau,
@@ -128,24 +143,23 @@ public sealed class DichVuThanhToan(
         long maNguoiDung,
         bool laNhanVien)
     {
-        // Chỉ cho phép xác nhận Sandbox trên Production
-        // khi được bật rõ ràng bằng cấu hình.
-        var batSandboxProduction =
-            bool.TryParse(
-                cauHinh["Payments:EnableSandboxConfirm"],
-                out var enabled
-            ) && enabled;
+        // Development: cho phép Sandbox.
+        // Production: chỉ cho phép khi cấu hình bật.
+        var batSandboxProduction = bool.TryParse(
+            cauHinh["Payments:EnableSandboxConfirm"],
+            out var enabled
+        ) && enabled;
 
         if (!moiTruong.IsDevelopment() &&
             !batSandboxProduction)
         {
             throw new NgoaiLeNghiepVu(
                 "Tính năng thanh toán giả lập hiện chưa được bật.",
-                403
-            );
+                403);
         }
 
         await using var sql = ketNoi.TaoKetNoi();
+        await sql.OpenAsync();
 
         var thanhToan =
             await sql.QuerySingleOrDefaultAsync<dynamic>("""
@@ -181,7 +195,7 @@ public sealed class DichVuThanhToan(
                 "Không tìm thấy giao dịch giả lập.", 404);
         }
 
-        // Nếu giao dịch đã thanh toán thì không xử lý lần nữa.
+        // Chống xác nhận thanh toán nhiều lần.
         if (thanhToan.BookingStatus == "PAID" &&
             thanhToan.PaymentStatus == "SUCCEEDED")
         {
@@ -193,7 +207,7 @@ public sealed class DichVuThanhToan(
             };
         }
 
-        // Kiểm tra trạng thái và thời hạn đơn hàng.
+        // Kiểm tra đơn còn hiệu lực.
         if (thanhToan.BookingStatus != "PENDING" ||
             (DateTime)thanhToan.ExpiresAtUtc <= DateTime.UtcNow)
         {
@@ -202,19 +216,17 @@ public sealed class DichVuThanhToan(
         }
 
         var maDatVe = (long)thanhToan.BookingId;
-
         var maChuDon = (long)thanhToan.UserId;
 
-        // Kiểm tra ghế vẫn được giữ hợp lệ.
+        // Kiểm tra quyền giữ ghế trên Redis.
         await giuGhe.KiemTra(
             (Guid)thanhToan.HoldId,
             maChuDon);
 
-        var maGiaoDich =
-            "SANDBOX-" + maThanhToan.ToString();
+        var maGiaoDich = "SANDBOX-" + maThanhToan;
 
-        // Xác nhận thanh toán thông qua Stored Procedure.
-        var ketQua = await sql.QuerySingleAsync(
+        // Xác nhận thanh toán bằng Stored Procedure.
+        var ketQua = await sql.QuerySingleAsync<dynamic>(
             "dbo.usp_ConfirmVerifiedPayment",
             new
             {
@@ -257,6 +269,7 @@ public sealed class DichVuThanhToan(
         bool laNhanVien)
     {
         await using var sql = ketNoi.TaoKetNoi();
+        await sql.OpenAsync();
 
         var tonTai = await sql.ExecuteScalarAsync<int>("""
             SELECT COUNT(*)
@@ -280,7 +293,7 @@ public sealed class DichVuThanhToan(
                 "Không tìm thấy đơn.", 404);
         }
 
-        return await sql.QueryAsync("""
+        return await sql.QueryAsync<dynamic>("""
             SELECT
                 PaymentId AS MaThanhToan,
                 Provider AS CongThanhToan,
