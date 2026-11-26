@@ -1,3 +1,4 @@
+import { taoUUID } from "../utils/uuid";
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Api } from '../api/client.js';
@@ -9,7 +10,7 @@ export default function ThanhToanBangVi({ token, maDatVe, tongTien }) {
   const [soDu, datSoDu] = useState(null);
   const [dangGui, datDangGui] = useState(false);
   const [loi, datLoi] = useState('');
-  const maLanYeuCau = useRef(crypto.randomUUID());
+  const maLanYeuCau = useRef(taoUUID());
 
   useEffect(() => {
     Api.soDuVi(token).then(x => datSoDu(Number(x.soDu)))

@@ -1,3 +1,4 @@
+import { taoUUID } from "../utils/uuid";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Api } from '../api/client.js';
 
@@ -11,7 +12,7 @@ export default function ChonVeHoan({ token, maDatVe, onHoanXong }) {
   const [dangGui, datDangGui] = useState(false);
   const [loi, datLoi] = useState('');
   const [ketQua, datKetQua] = useState(null);
-  const maLanYeuCau = useRef(crypto.randomUUID());
+  const maLanYeuCau = useRef(taoUUID());
 
   const nap = async () => {
     datDangTai(true);
@@ -23,7 +24,7 @@ export default function ChonVeHoan({ token, maDatVe, onHoanXong }) {
 
   useEffect(() => {
     datDaChon([]);
-    maLanYeuCau.current = crypto.randomUUID();
+    maLanYeuCau.current = taoUUID();
     nap();
   }, [token, maDatVe]);
 
@@ -33,7 +34,7 @@ export default function ChonVeHoan({ token, maDatVe, onHoanXong }) {
 
   function chonVe(maVe, duocChon) {
     datDaChon(ds => duocChon ? [...ds, maVe] : ds.filter(x => x !== maVe));
-    maLanYeuCau.current = crypto.randomUUID();
+    maLanYeuCau.current = taoUUID();
   }
 
   async function hoan(e) {
@@ -51,7 +52,7 @@ export default function ChonVeHoan({ token, maDatVe, onHoanXong }) {
       datKetQua(kq);
       datDaChon([]);
       datLyDo('');
-      maLanYeuCau.current = crypto.randomUUID();
+      maLanYeuCau.current = taoUUID();
       await nap();
       onHoanXong?.();
     } catch (e) {
